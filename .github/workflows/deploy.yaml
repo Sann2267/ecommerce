@@ -25,11 +25,11 @@ jobs:
           pip install ruff
           ruff check .
       - name: Build Docker image
-        run: docker build -t ghcr.io/sann2267/sistemtoko-dashboard:latest .
+        run: run: docker build -t ${{ env.REGISTRY }}/${__{ env.IMAGE_NAME }}:latest .
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Push image
-        run: docker push ghcr.io/sann2267/sistemtoko-dashboard:latest
+        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -37,7 +37,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            sudo docker pull ghcr.io/sann2267/sistemtoko-dashboard:latest
+            sudo docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             sudo docker stop sistemtoko-dashboard || true
             sudo docker rm sistemtoko-dashboard || true
             sudo docker run -d \
