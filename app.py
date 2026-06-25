@@ -29,14 +29,14 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-me')
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev_secret')
 
 AWS_REGION        = os.environ.get('AWS_REGION',          'ap-southeast-2')
 DYNAMO_TABLE_NAME = os.environ.get('DYNAMO_TABLE_NAME',   'Sistemtoko-Transactions')
 ATHENA_DB         = os.environ.get('ATHENA_DATABASE',     'analytics_db')
 ATHENA_S3_OUTPUT  = os.environ.get('ATHENA_S3_OUTPUT',    's3://sistematoko-datalake/athena-results/')
 SNS_TOPIC_ARN     = os.environ.get('SNS_TOPIC_ARN',       'arn:aws:sns:ap-southeast-2:017851679435:FraudAlert')
-API_KEY           = os.environ.get('API_KEY',             'default-secret-api-key')
+API_KEY           = os.environ.get('API_KEY',             'lks-smkn6-api-key')
 
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 athena   = boto3.client('athena',    region_name=AWS_REGION)
