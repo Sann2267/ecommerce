@@ -21,7 +21,7 @@ from decimal import Decimal
 from functools import wraps
 
 import boto3
-from flask import Flask, render_template, request, jsonify, abort
+from flask import Flask, render_template, request, jsonify
 from boto3.dynamodb.conditions import Attr
 from dotenv import load_dotenv
 
