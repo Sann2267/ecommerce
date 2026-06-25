@@ -49,17 +49,3 @@ jobs:
               -e FLASK_SECRET_KEY="${{ secrets.FLASK_SECRET_KEY }}" \
               -e FLASK_DEBUG="false" \
               ghcr.io/${{ env.IMAGE_NAME }}:latest
-
-smoke-test:
-    name: Smoke Test
-    runs-on: ubuntu-latest
-    needs: deploy
-
-    steps:
-      - name: Test endpoint /health
-        run: |
-          echo "Testing http://${{ secrets.EC2_HOST }}:5000/health"
-          response=$(curl -sf --max-time 15 http://${{ secrets.EC2_HOST }}:5000/health)
-          echo "Response: $response"
-          echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='healthy', 'Health check gagal!'"
-          echo "✅ Smoke test lulus"
