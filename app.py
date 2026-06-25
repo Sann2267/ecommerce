@@ -34,6 +34,7 @@ DYNAMO_TABLE_NAME = os.environ.get('DYNAMO_TABLE_NAME',   'Sistemtoko-Transactio
 ATHENA_DB         = os.environ.get('ATHENA_DATABASE',     'analytics_db')
 ATHENA_S3_OUTPUT  = os.environ.get('ATHENA_S3_OUTPUT',    's3://sistematoko-datalake/athena-results/')
 SNS_TOPIC_ARN     = os.environ.get('SNS_TOPIC_ARN',       'arn:aws:sns:ap-southeast-2:017851679435:FraudAlert')
+API_KEY           = os.environ.get('API_KEY', 'default-secret-api-key')
 
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 athena   = boto3.client('athena',    region_name=AWS_REGION)
@@ -86,7 +87,6 @@ def run_athena_query(query: str) -> list[dict]:
 
 
 def get_dynamo_transactions(limit: int = 50) -> list[dict]:
-    """Scan DynamoDB untuk semua transaksi (untuk tabel kecil)."""
     resp  = table.scan(Limit=limit)
     items = resp.get('Items', [])
     items.sort(key=lambda x: x.get('processed_at', ''), reverse=True)
@@ -94,7 +94,6 @@ def get_dynamo_transactions(limit: int = 50) -> list[dict]:
 
 
 def get_stats(items: list[dict]) -> dict:
-    """Hitung statistik dari list transaksi."""
     total     = len(items)
     fraud     = sum(1 for i in items if i.get('is_fraud'))
     valid     = total - fraud
@@ -138,7 +137,6 @@ def index():
 
 @app.route('/report')
 def report():
-    """Halaman laporan analitik dari Athena."""
     daily_data, top_merchants, fraud_by_category = [], [], []
     error = None
 
@@ -194,12 +192,6 @@ def report():
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    """
-    Terima notifikasi dari SNS HTTP subscription.
-    SNS kirim:
-      - SubscriptionConfirmation → harus confirm URL
-      - Notification             → data fraud alert
-    """
     global webhook_log
 
     sns_type = request.headers.get('x-amz-sns-message-type', '')
@@ -254,8 +246,47 @@ def webhook():
 
     return jsonify({'received': True, 'type': sns_type}), 200
 
+@app.route('/transactions', methods=['POST'])
+def create_transaction():
+    request_key = request.headers.get('X-API-Key')
+    if not request_key or request_key != API_KEY:
+        logger.warning("Unauthorized access attempt to POST /transactions")
+        return jsonify({'status': 'error', 'message': 'Unauthorized: Invalid or missing X-API-Key'}), 401
 
-@app.route('/api/transactions')
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON body'}), 400
+
+    required_fields = ['transaction_id', 'total_billing']
+    missing_fields = [field for field in required_fields if field not in data]
+    if missing_fields:
+        return jsonify({
+            'status': 'error', 
+            'message': f'Missing required fields: {", ".join(missing_fields)}'
+        }), 400
+
+    try:
+        db_item = json.loads(json.dumps(data), parse_float=Decimal, parse_int=Decimal)
+        
+        if 'processed_at' not in db_item:
+            db_item['processed_at'] = datetime.now(timezone.utc).isoformat()
+        if 'is_fraud' not in db_item:
+            db_item['is_fraud'] = False
+        table.put_item(Item=db_item)
+        logger.info(f"Successfully inserted transaction: {db_item['transaction_id']}")
+        
+        return jsonify({
+            'status': 'ok',
+            'message': 'Transaction recorded successfully',
+            'transaction_id': db_item['transaction_id']
+        }), 201
+
+    except Exception as e:
+        logger.error(f"Failed to insert transaction into DynamoDB: {e}")
+        return jsonify({'status': 'error', 'message': 'Internal database error'}), 500
+
+@app.route('/api/transactions', methods=['GET'])
 def api_transactions():
     """JSON API: list transaksi untuk AJAX request."""
     limit = min(int(request.args.get('limit', 50)), 200)
@@ -272,9 +303,8 @@ def api_transactions():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@app.route('/api/stats')
+@app.route('/api/stats', methods=['GET'])
 def api_stats():
-    """JSON API: statistik untuk chart."""
     try:
         items = get_dynamo_transactions(limit=500)
         stats = get_stats(items)
@@ -283,7 +313,7 @@ def api_stats():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@app.route('/api/webhook-log')
+@app.route('/api/webhook-log', methods=['GET'])
 def api_webhook_log():
     """JSON API: webhook log terbaru."""
     return jsonify({'status': 'ok', 'logs': webhook_log[:50]})
