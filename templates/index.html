@@ -3,116 +3,213 @@
 <head>
   <meta charset="UTF-8" />
   <title>SistemToko Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f4f4; color: #222; }
+
+    nav { background: #1a1a2e; padding: 12px 24px; }
+    nav a { color: #eee; text-decoration: none; margin-right: 16px; font-size: 14px; }
+    nav a:hover { color: #fff; }
+
+    .container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin-bottom: 4px; }
+    p.sub { color: #666; font-size: 13px; margin-bottom: 20px; }
+
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat-box {
+      background: #fff; border: 1px solid #ddd; border-radius: 6px;
+      padding: 16px 20px; min-width: 150px; flex: 1;
+    }
+    .stat-box .label { font-size: 12px; color: #888; text-transform: uppercase; }
+    .stat-box .value { font-size: 26px; font-weight: bold; margin-top: 4px; }
+    .stat-box .sub   { font-size: 12px; color: #999; }
+    .blue   { color: #2563eb; } .green  { color: #16a34a; }
+    .red    { color: #dc2626; } .orange { color: #d97706; }
+    .purple { color: #7c3aed; }
+
+    .card {
+      background: #fff; border: 1px solid #ddd; border-radius: 6px;
+      margin-bottom: 20px; overflow: hidden;
+    }
+    .card-header {
+      background: #f8f8f8; border-bottom: 1px solid #ddd;
+      padding: 10px 16px; font-weight: bold; font-size: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-body { padding: 0; overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f0f0f0; padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd; white-space: nowrap; }
+    td { padding: 8px 12px; border-bottom: 1px solid #eee; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-fraud { background: #fee2e2; color: #dc2626; }
+    .badge-aman  { background: #dcfce7; color: #16a34a; }
+    .badge-ai    { background: #ede9fe; color: #7c3aed; }
+    .badge-rule  { background: #fef3c7; color: #d97706; }
+
+    .webhook-item { padding: 10px 16px; border-bottom: 1px solid #eee; font-size: 13px; }
+    .webhook-item:last-child { border-bottom: none; }
+    .webhook-id   { font-weight: bold; color: #2563eb; }
+    .webhook-time { font-size: 11px; color: #999; }
+
+    .main-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+    .sidebar { display: flex; flex-direction: column; gap: 20px; }
+
+    .empty { padding: 20px; text-align: center; color: #999; font-size: 13px; }
+  </style>
 </head>
 <body>
 
-  <h1>SistemToko Dashboard</h1>
-  <nav>
-    <a href="/">Dashboard</a> |
-    <a href="/report">Report</a>
-  </nav>
-  <hr>
+<nav>
+  <a href="/">SistemToko</a>
+  <a href="/">Dashboard</a>
+  <a href="/report">Report</a>
+</nav>
 
-  <!-- ── Statistik ──────────────────────────────────────── -->
-  <h2>Statistik</h2>
-  <ul>
-    <li>Total Transaksi : <span id="stat-total">{{ stats.total or 0 }}</span></li>
-    <li>Valid (AMAN)    : <span id="stat-valid">{{ stats.valid or 0 }}</span></li>
-    <li>Fraud           : <span id="stat-fraud">{{ stats.fraud or 0 }}</span></li>
-    <li>Fraud Rate      : <span id="stat-rate">{{ stats.fraud_rate or 0 }}%</span></li>
-    <li>Total Revenue   : <span id="stat-revenue">{{ format_rupiah(stats.total_revenue or 0) }}</span></li>
-    <li>Total Fraud Amt : {{ format_rupiah(stats.total_fraud_amount or 0) }}</li>
-    <li>AI Decisions    : <span id="stat-ai">{{ stats.ai_decisions or 0 }}</span></li>
-    <li>Rule Fallback   : <span id="stat-rule">{{ stats.rule_decisions or 0 }}</span></li>
-  </ul>
-  <hr>
+<div class="container">
+  <h1>Analytics & Fraud Detection</h1>
+  <p class="sub">Real-time monitoring transaksi via DynamoDB</p>
 
-  <!-- ── Tabel Transaksi ────────────────────────────────── -->
-  <h2>Riwayat Transaksi</h2>
-  <p>
-    Filter:
-    <button onclick="filterTable('all')">Semua</button>
-    <button onclick="filterTable('fraud')">Fraud</button>
-    <button onclick="filterTable('aman')">Aman</button>
-    <button onclick="filterTable('ai')">AI</button>
-    <button onclick="filterTable('rule')">Rule</button>
-  </p>
-  <table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-      <tr>
-        <th>Transaction ID</th>
-        <th>User</th>
-        <th>Merchant</th>
-        <th>Item</th>
-        <th>Amount</th>
-        <th>Tax</th>
-        <th>Total Billing</th>
-        <th>Verdict</th>
-        <th>Source</th>
-        <th>Waktu</th>
-      </tr>
-    </thead>
-    <tbody id="tbody-trx">
-      {% for trx in transactions %}
-      <tr data-fraud="{{ 'true' if trx.is_fraud else 'false' }}"
-          data-source="{{ (trx.decision_source or '') | lower }}">
-        <td>{{ trx.transaction_id }}</td>
-        <td>{{ trx.user_id }}</td>
-        <td>{{ trx.merchant_name }}</td>
-        <td>{{ trx.item_name }}</td>
-        <td>{{ format_rupiah(trx.amount or 0) }}</td>
-        <td>{{ format_rupiah(trx.tax or 0) }}</td>
-        <td>{{ format_rupiah(trx.total_billing or 0) }}</td>
-        <td>{% if trx.is_fraud %}FRAUD{% else %}AMAN{% endif %}</td>
-        <td>{{ trx.decision_source }}</td>
-        <td>{{ (trx.processed_at or '')[:16] }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="10">Belum ada transaksi.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <hr>
+  <!-- ── Stats ─────────────────────────────────────────── -->
+  <div class="stats">
+    <div class="stat-box">
+      <div class="label">Total Transaksi</div>
+      <div class="value blue" id="stat-total">{{ stats.total or 0 }}</div>
+      <div class="sub">Semua waktu</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Valid (AMAN)</div>
+      <div class="value green" id="stat-valid">{{ stats.valid or 0 }}</div>
+      <div class="sub">Terverifikasi</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Fraud</div>
+      <div class="value red" id="stat-fraud">{{ stats.fraud or 0 }}</div>
+      <div class="sub" id="stat-rate">{{ stats.fraud_rate or 0 }}% dari total</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Revenue Valid</div>
+      <div class="value blue" id="stat-revenue" style="font-size:18px">{{ format_rupiah(stats.total_revenue or 0) }}</div>
+      <div class="sub">Total billing valid</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">AI Decisions</div>
+      <div class="value purple" id="stat-ai">{{ stats.ai_decisions or 0 }}</div>
+      <div class="sub"><span id="stat-rule">{{ stats.rule_decisions or 0 }}</span> rule fallback</div>
+    </div>
+  </div>
 
-  <!-- ── Webhook Log ────────────────────────────────────── -->
-  <h2>Fraud Alert Log (SNS Webhook)</h2>
-  <div id="webhook-list">
-  {% if webhook_log %}
-  <table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-      <tr>
-        <th>Waktu</th>
-        <th>Transaction ID</th>
-        <th>User</th>
-        <th>Merchant</th>
-        <th>Amount</th>
-        <th>Verdict</th>
-        <th>Source</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for log in webhook_log %}
-      <tr>
-        <td>{{ (log.received_at or '')[:16] }}</td>
-        <td>{{ log.transaction_id }}</td>
-        <td>{{ log.user_id }}</td>
-        <td>{{ log.merchant_name }}</td>
-        <td>{{ format_rupiah(log.amount or 0) }}</td>
-        <td>{{ log.fraud_verdict }}</td>
-        <td>{{ log.decision_source }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>Belum ada fraud alert masuk via SNS.</p>
-  {% endif %}
-  </div><!-- #webhook-list -->
+  <div class="main-grid">
+
+    <!-- Transactions Table -->
+    <div class="card">
+      <div class="card-header">
+        <span>Riwayat Transaksi</span>
+        <span>
+          <button class="filter-btn" onclick="filterTable('all', this)" data-type="all">Semua</button>
+          <button class="filter-btn" onclick="filterTable('fraud', this)" data-type="fraud">Fraud</button>
+          <button class="filter-btn" onclick="filterTable('aman', this)" data-type="aman">Aman</button>
+          <button class="filter-btn" onclick="filterTable('ai', this)" data-type="ai">AI</button>
+          <button class="filter-btn" onclick="filterTable('rule', this)" data-type="rule">Rule</button>
+        </span>
+      </div>
+      <div class="card-body">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Merchant</th>
+              <th>Item</th>
+              <th>Amount</th>
+              <th>Tax</th>
+              <th>Total Billing</th>
+              <th>Verdict</th>
+              <th>Source</th>
+              <th>Waktu</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-trx">
+            {% for trx in transactions %}
+            <tr data-fraud="{{ 'true' if trx.is_fraud else 'false' }}"
+                data-source="{{ (trx.decision_source or '') | lower }}">
+              <td title="{{ trx.transaction_id }}">{{ trx.transaction_id[:8] }}…</td>
+              <td>{{ trx.user_id }}</td>
+              <td>{{ trx.merchant_name }}</td>
+              <td>{{ trx.item_name }}</td>
+              <td>{{ format_rupiah(trx.amount or 0) }}</td>
+              <td>{{ format_rupiah(trx.tax or 0) }}</td>
+              <td><strong>{{ format_rupiah(trx.total_billing or 0) }}</strong></td>
+              <td>
+                {% if trx.is_fraud %}
+                  <span class="badge badge-fraud">FRAUD</span>
+                {% else %}
+                  <span class="badge badge-aman">AMAN</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if trx.decision_source == 'AI' %}
+                  <span class="badge badge-ai">AI</span>
+                {% else %}
+                  <span class="badge badge-rule">RULE</span>
+                {% endif %}
+              </td>
+              <td style="color:#999">{{ (trx.processed_at or '')[:16].replace('T',' ') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="10" class="empty">Belum ada transaksi. Kirim POST /transaction.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Fraud Rate -->
+      <div class="card">
+        <div class="card-header">Fraud Rate</div>
+        <div style="padding:16px;text-align:center">
+          <div id="fraud-rate-num" style="font-size:48px;font-weight:bold;color:{% if stats.fraud_rate > 20 %}#dc2626{% elif stats.fraud_rate > 10 %}#d97706{% else %}#16a34a{% endif %}">
+            {{ stats.fraud_rate or 0 }}%
+          </div>
+          <div id="fraud-rate-sub" style="color:#666;font-size:13px;margin-top:4px">
+            {{ stats.fraud or 0 }} fraud dari {{ stats.total or 0 }} transaksi
+          </div>
+          <div style="margin-top:12px;background:#eee;border-radius:4px;height:8px;overflow:hidden">
+            <div id="fraud-bar" style="width:{{ [stats.fraud_rate or 0, 100]|min }}%;height:100%;background:{% if stats.fraud_rate > 20 %}#dc2626{% elif stats.fraud_rate > 10 %}#d97706{% else %}#16a34a{% endif %}"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Webhook Log -->
+      <div class="card">
+        <div class="card-header">Fraud Alerts (SNS)</div>
+        <div id="webhook-list">
+        {% if webhook_log %}
+          {% for log in webhook_log %}
+          <div class="webhook-item">
+            <div class="webhook-id">{{ log.transaction_id }}</div>
+            <div>{{ log.merchant_name }} — <strong style="color:#dc2626">{{ format_rupiah(log.total_billing or log.amount or 0) }}</strong></div>
+            <div class="webhook-time">{{ (log.received_at or '')[:16].replace('T',' ') }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="empty">Belum ada fraud alert masuk.<br>Kirim transaksi amount &gt; 10.000.</div>
+        {% endif %}
+        </div><!-- #webhook-list -->
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <script>
-  // ── Auto-refresh transaksi setiap 30 detik ─────────────────────
   setInterval(refreshTransaksi, 30000);
 
   function refreshTransaksi() {
@@ -123,29 +220,35 @@
         if (!tbody || !data.transactions) return;
 
         if (data.transactions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="10">Belum ada transaksi.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="10" class="empty">Belum ada transaksi. Kirim POST /transaction.</td></tr>';
           return;
         }
 
         tbody.innerHTML = data.transactions.map(trx => `
-          <tr>
-            <td>${trx.transaction_id}</td>
+          <tr data-fraud="${trx.is_fraud}" data-source="${(trx.decision_source || '').toLowerCase()}">
+            <td title="${trx.transaction_id}">${trx.transaction_id.slice(0,8)}…</td>
             <td>${trx.user_id}</td>
             <td>${trx.merchant_name || '-'}</td>
             <td>${trx.item_name}</td>
             <td>${rupiah(trx.amount)}</td>
             <td>${rupiah(trx.tax)}</td>
             <td><strong>${rupiah(trx.total_billing)}</strong></td>
-            <td>${trx.is_fraud ? 'FRAUD' : 'AMAN'}</td>
-            <td>${trx.decision_source || '-'}</td>
-            <td>${(trx.processed_at || '').slice(0, 16)}</td>
+            <td>${trx.is_fraud
+              ? '<span class="badge badge-fraud">FRAUD</span>'
+              : '<span class="badge badge-aman">AMAN</span>'}</td>
+            <td>${trx.decision_source === 'AI'
+              ? '<span class="badge badge-ai">AI</span>'
+              : '<span class="badge badge-rule">RULE</span>'}</td>
+            <td style="color:#999">${(trx.processed_at || '').slice(0,16).replace('T',' ')}</td>
           </tr>
         `).join('');
+
+        const activeBtn = document.querySelector('.filter-btn.active-filter');
+        if (activeBtn) filterTable(activeBtn.dataset.type, activeBtn);
       })
       .catch(e => console.warn('Refresh transaksi gagal:', e));
   }
 
-  // ── Update stats setiap 30 detik ───────────────────────────────
   setInterval(refreshStats, 30000);
 
   function refreshStats() {
@@ -159,11 +262,19 @@
         setText('stat-revenue', rupiah(d.total_revenue));
         setText('stat-ai',      d.ai_decisions);
         setText('stat-rule',    d.rule_decisions);
+
+        const bar = document.getElementById('fraud-bar');
+        if (bar) {
+          const rate = Math.min(d.fraud_rate || 0, 100);
+          bar.style.width = rate + '%';
+          bar.style.background = rate > 20 ? '#dc2626' : rate > 10 ? '#d97706' : '#16a34a';
+        }
+        setText('fraud-rate-num', (d.fraud_rate || 0) + '%');
+        setText('fraud-rate-sub', `${d.fraud || 0} fraud dari ${d.total || 0} transaksi`);
       })
       .catch(e => console.warn('Refresh stats gagal:', e));
   }
 
-  // ── Poll webhook log
   setInterval(refreshWebhook, 10000);
 
   function refreshWebhook() {
@@ -174,30 +285,32 @@
         if (!div || !data.logs) return;
 
         if (data.logs.length === 0) {
-          div.innerHTML = '<p>Belum ada fraud alert masuk via SNS.</p>';
+          div.innerHTML = '<div class="empty">Belum ada fraud alert masuk.<br>Kirim transaksi amount &gt; 10.000.</div>';
           return;
         }
 
-        div.innerHTML = '<table border="1" cellpadding="6" cellspacing="0">' +
-          '<thead><tr><th>Waktu</th><th>ID</th><th>User</th><th>Merchant</th><th>Amount</th><th>Verdict</th></tr></thead>' +
-          '<tbody>' +
-          data.logs.map(l => `
-            <tr>
-              <td>${(l.received_at || '').slice(0, 16)}</td>
-              <td>${l.transaction_id}</td>
-              <td>${l.user_id || '-'}</td>
-              <td>${l.merchant_name || '-'}</td>
-              <td>${rupiah(l.total_billing || l.amount)}</td>
-              <td><strong>${l.fraud_verdict}</strong></td>
-            </tr>
-          `).join('') +
-          '</tbody></table>';
+        div.innerHTML = data.logs.map(l => `
+          <div class="webhook-item">
+            <div class="webhook-id">${l.transaction_id}</div>
+            <div>${l.merchant_name || '-'} — <strong style="color:#dc2626">${rupiah(l.total_billing || l.amount)}</strong></div>
+            <div class="webhook-time">${(l.received_at || '').slice(0,16).replace('T',' ')}</div>
+          </div>
+        `).join('');
       })
       .catch(e => console.warn('Refresh webhook gagal:', e));
   }
 
-  // ── Filter tabel transaksi ─────────────────────────────────────
-  function filterTable(type) {
+  function filterTable(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.remove('active-filter');
+      b.style.fontWeight = 'normal';
+    });
+    if (btn) {
+      btn.classList.add('active-filter');
+      btn.dataset.type = type;
+      btn.style.fontWeight = 'bold';
+    }
+
     document.querySelectorAll('#tbody-trx tr[data-fraud]').forEach(row => {
       const isFraud = row.dataset.fraud === 'true';
       const src     = (row.dataset.source || '').toLowerCase();
@@ -210,15 +323,14 @@
     });
   }
 
-  // ── Helper ─────────────────────────────────────────────────────
   function rupiah(val) {
-    if (!val) return 'Rp 0';
+    if (val === null || val === undefined) return 'Rp 0';
     return 'Rp ' + parseFloat(val).toLocaleString('id-ID');
   }
 
   function setText(id, val) {
     const el = document.getElementById(id);
-    if (el) el.textContent = val;
+    if (el) el.textContent = val ?? '';
   }
 </script>
 

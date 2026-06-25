@@ -15,11 +15,9 @@
 
   {% if error %}
   <p><strong>Error Athena:</strong> {{ error }}</p>
-  <p><em>Pastikan tabel sudah dibuat via ddl.sql dan MSCK REPAIR TABLE sudah dijalankan.</em></p>
   <hr>
   {% endif %}
 
-  <!-- ── Daily Summary ──────────────────────────────────── -->
   <h2>Daily Summary (30 Hari Terakhir)</h2>
   {% if daily_data %}
   <table border="1" cellpadding="6" cellspacing="0">
@@ -47,7 +45,6 @@
   {% endif %}
   <hr>
 
-  <!-- ── Top Merchants ──────────────────────────────────── -->
   <h2>Top 10 Merchant by Revenue</h2>
   {% if top_merchants %}
   <table border="1" cellpadding="6" cellspacing="0">
@@ -75,7 +72,6 @@
   {% endif %}
   <hr>
 
-  <!-- ── Fraud by Category ──────────────────────────────── -->
   <h2>Fraud Rate per Kategori</h2>
   {% if fraud_by_category %}
   <table border="1" cellpadding="6" cellspacing="0">
