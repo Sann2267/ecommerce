@@ -127,7 +127,7 @@ def index():
                            webhook_log=webhook_log[-20:],
                            format_rupiah=format_rupiah)
 
-@app.route('/report', methods=['GET'])
+@app.route('/report')
 def report():
     daily_data, top_merchants, fraud_by_category = [], [], []
     error = None
