@@ -50,7 +50,7 @@
 </nav>
 
 <div class="page">
-  <h1 class="page-title">📊 Analytics Report</h1>
+  <h1 class="page-title">Analytics Report</h1>
   <p class="page-sub">Data dari Amazon Athena — S3 Data Lake</p>
 
   {% if error %}
@@ -62,7 +62,7 @@
 
   <div class="grid-2">
     <div class="card">
-      <div class="card-header"><span class="card-title">📅 Daily Summary (30 Hari Terakhir)</span></div>
+      <div class="card-header"><span class="card-title">Daily Summary (30 Hari Terakhir)</span></div>
       <div class="tbl-wrap">
         {% if daily_data %}
         <table>
@@ -92,7 +92,7 @@
 
     <!-- Top Merchants -->
     <div class="card">
-      <div class="card-header"><span class="card-title">🏆 Top 10 Merchant by Revenue</span></div>
+      <div class="card-header"><span class="card-title">Top 10 Merchant by Revenue</span></div>
       {% if top_merchants %}
       <div class="bar-wrap">
         {% set max_rev = top_merchants[0].total_revenue|float if top_merchants else 1 %}
@@ -114,7 +114,7 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><span class="card-title">🚨 Fraud Rate per Kategori</span></div>
+    <div class="card-header"><span class="card-title">Fraud Rate per Kategori</span></div>
     <div class="tbl-wrap">
       {% if fraud_by_category %}
       <table>

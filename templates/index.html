@@ -137,7 +137,7 @@
 <body>
 
 <nav>
-  <div class="nav-brand">🏪 SistemToko</div>
+  <div class="nav-brand">SistemToko_Ibnu</div>
   <div style="display:flex;align-items:center;gap:16px">
     <span class="live-badge"><span class="live-dot"></span> Live</span>
     <div class="nav-links">
@@ -188,14 +188,14 @@
 
     <div class="card">
       <div class="card-header">
-        <span class="card-title">📋 Riwayat Transaksi</span>
+        <span class="card-title">Riwayat Transaksi</span>
         <button class="btn-refresh" onclick="refreshData()">↻ Refresh</button>
       </div>
       <div class="filter-row">
         <button class="filter-btn active" onclick="filterTable('all', this)">Semua</button>
-        <button class="filter-btn" onclick="filterTable('fraud', this)">🚨 Fraud</button>
-        <button class="filter-btn" onclick="filterTable('aman', this)">✅ Aman</button>
-        <button class="filter-btn" onclick="filterTable('ai', this)">🤖 AI</button>
+        <button class="filter-btn" onclick="filterTable('fraud', this)">Fraud</button>
+        <button class="filter-btn" onclick="filterTable('aman', this)">Aman</button>
+        <button class="filter-btn" onclick="filterTable('ai', this)">AI</button>
       </div>
       <div class="card-body">
         <div class="tbl-wrap">
@@ -227,16 +227,16 @@
                 <td class="mono" style="font-weight:600">{{ format_rupiah(trx.total_billing or 0) }}</td>
                 <td>
                   {% if trx.is_fraud %}
-                    <span class="badge badge-fraud">🚨 FRAUD</span>
+                    <span class="badge badge-fraud">FRAUD</span>
                   {% else %}
-                    <span class="badge badge-aman">✅ AMAN</span>
+                    <span class="badge badge-aman">AMAN</span>
                   {% endif %}
                 </td>
                 <td>
                   {% if trx.decision_source == 'AI' %}
-                    <span class="badge badge-ai">🤖 AI</span>
+                    <span class="badge badge-ai">AI</span>
                   {% else %}
-                    <span class="badge badge-rule">📏 RULE</span>
+                    <span class="badge badge-rule">RULE</span>
                   {% endif %}
                 </td>
                 <td class="mono" style="color:var(--muted)">{{ (trx.processed_at or '')[:16].replace('T',' ') }}</td>
@@ -253,7 +253,7 @@
     <div class="sidebar">
 
       <div class="card">
-        <div class="card-header"><span class="card-title">🎯 Fraud Rate</span></div>
+        <div class="card-header"><span class="card-title">Fraud Rate</span></div>
         <div class="card-body ring-wrap">
           {% set rate = stats.fraud_rate or 0 %}
           {% set circ = 2 * 3.14159 * 45 %}
@@ -278,7 +278,7 @@
 
       <div class="card">
         <div class="card-header">
-          <span class="card-title">🔔 Fraud Alerts</span>
+          <span class="card-title">Fraud Alerts</span>
           <span style="font-size:0.75rem;color:var(--muted)">via SNS</span>
         </div>
         <div class="card-body webhook-list">
