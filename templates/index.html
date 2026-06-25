@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SistemToko Analytics & Fraud Detection Dashboard" />
+  <title>SistemToko Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #0a0f1e;
+      --surface:  #111827;
+      --border:   #1f2937;
+      --border2:  #374151;
+      --text:     #f1f5f9;
+      --muted:    #6b7280;
+      --blue:     #3b82f6;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --yellow:   #f59e0b;
+      --purple:   #a855f7;
+      --cyan:     #06b6d4;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand { font-size: 1.1rem; font-weight: 700; color: var(--cyan); letter-spacing: -0.02em; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem;
+      font-weight: 500; margin-left: 20px; transition: color 0.15s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green); font-size: 0.7rem; font-weight: 600;
+      padding: 2px 8px; border-radius: 12px;
+    }
+    .live-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .page { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    .page-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+    .page-sub   { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border2); }
+    .stat-label { color: var(--muted); font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; margin: 6px 0 2px; }
+    .stat-sub   { color: var(--muted); font-size: 0.75rem; }
+    .c-blue   { color: var(--blue);   } .c-green  { color: var(--green);  }
+    .c-red    { color: var(--red);    } .c-yellow { color: var(--yellow); }
+    .c-purple { color: var(--purple); } .c-cyan   { color: var(--cyan);   }
+
+    .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 18px; }
+    @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+    }
+    .card-title { font-size: 0.9rem; font-weight: 600; }
+    .card-body  { padding: 0; }
+
+    .tbl-wrap { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead { position: sticky; top: 0; background: #0d1422; z-index: 1; }
+    th    { padding: 10px 14px; text-align: left; color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+    td    { padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+    }
+    .badge-fraud   { background: rgba(239,68,68,0.15);  color: var(--red);    border: 1px solid rgba(239,68,68,0.3);  }
+    .badge-aman    { background: rgba(34,197,94,0.15);  color: var(--green);  border: 1px solid rgba(34,197,94,0.3);  }
+    .badge-ai      { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+    .badge-rule    { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+
+    .sidebar { display: flex; flex-direction: column; gap: 18px; }
+
+    .ring-wrap { padding: 24px; text-align: center; }
+    .ring-svg  { display: block; margin: 0 auto 14px; }
+    .ring-label { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    .webhook-list { padding: 0; }
+    .webhook-item {
+      padding: 12px 18px; border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+    }
+    .webhook-item:last-child { border-bottom: none; }
+    .webhook-id   { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--cyan); }
+    .webhook-time { color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
+    .webhook-amt  { color: var(--red); font-weight: 600; }
+    .empty-state  { padding: 24px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+
+    /* ── Refresh ─────────────────────────────────────────── */
+    .btn-refresh {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--muted); padding: 4px 12px; border-radius: 6px;
+      font-size: 0.78rem; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-refresh:hover { border-color: var(--blue); color: var(--text); }
+    .filter-row { display: flex; gap: 8px; padding: 10px 18px; border-bottom: 1px solid var(--border); }
+    .filter-btn {
+      padding: 4px 12px; border-radius: 6px; font-size: 0.78rem;
+      cursor: pointer; border: 1px solid var(--border); background: transparent;
+      color: var(--muted); transition: all 0.15s;
+    }
+    .filter-btn.active, .filter-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(59,130,246,0.08); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">🏪 SistemToko</div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span class="live-badge"><span class="live-dot"></span> Live</span>
+    <div class="nav-links">
+      <a href="/" class="active">Dashboard</a>
+      <a href="/report">Report</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <h1 class="page-title">Analytics & Fraud Detection</h1>
+  <p class="page-sub">Real-time monitoring transaksi | Terakhir diperbarui: <span id="last-update">{{ now if now else 'just now' }}</span></p>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Transaksi</div>
+      <div class="stat-value c-blue">{{ stats.total or 0 }}</div>
+      <div class="stat-sub">Semua waktu</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Transaksi Valid</div>
+      <div class="stat-value c-green">{{ stats.valid or 0 }}</div>
+      <div class="stat-sub">AMAN terdeteksi</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fraud Terdeteksi</div>
+      <div class="stat-value c-red">{{ stats.fraud or 0 }}</div>
+      <div class="stat-sub">{{ stats.fraud_rate or 0 }}% dari total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Revenue</div>
+      <div class="stat-value c-cyan" style="font-size:1.2rem">{{ format_rupiah(stats.total_revenue or 0) }}</div>
+      <div class="stat-sub">Transaksi valid</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fraud Amount</div>
+      <div class="stat-value c-yellow" style="font-size:1.2rem">{{ format_rupiah(stats.total_fraud_amount or 0) }}</div>
+      <div class="stat-sub">Nilai terblokir</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">AI Decisions</div>
+      <div class="stat-value c-purple">{{ stats.ai_decisions or 0 }}</div>
+      <div class="stat-sub">{{ stats.rule_decisions or 0 }} rule fallback</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Riwayat Transaksi</span>
+        <button class="btn-refresh" onclick="refreshData()">↻ Refresh</button>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="filterTable('all', this)">Semua</button>
+        <button class="filter-btn" onclick="filterTable('fraud', this)">🚨 Fraud</button>
+        <button class="filter-btn" onclick="filterTable('aman', this)">✅ Aman</button>
+        <button class="filter-btn" onclick="filterTable('ai', this)">🤖 AI</button>
+      </div>
+      <div class="card-body">
+        <div class="tbl-wrap">
+          <table id="trx-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Merchant</th>
+                <th>Item</th>
+                <th>Amount</th>
+                <th>Tax</th>
+                <th>Total Billing</th>
+                <th>Verdict</th>
+                <th>Source</th>
+                <th>Waktu</th>
+              </tr>
+            </thead>
+            <tbody id="trx-body">
+              {% for trx in transactions %}
+              <tr data-fraud="{{ 'true' if trx.is_fraud else 'false' }}"
+                  data-source="{{ (trx.decision_source or '').lower() }}">
+                <td class="mono">{{ trx.transaction_id[:8] }}…</td>
+                <td>{{ trx.user_id }}</td>
+                <td>{{ trx.merchant_name }}</td>
+                <td>{{ trx.item_name }}</td>
+                <td class="mono">{{ format_rupiah(trx.amount or 0) }}</td>
+                <td class="mono">{{ format_rupiah(trx.tax or 0) }}</td>
+                <td class="mono" style="font-weight:600">{{ format_rupiah(trx.total_billing or 0) }}</td>
+                <td>
+                  {% if trx.is_fraud %}
+                    <span class="badge badge-fraud">🚨 FRAUD</span>
+                  {% else %}
+                    <span class="badge badge-aman">✅ AMAN</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if trx.decision_source == 'AI' %}
+                    <span class="badge badge-ai">🤖 AI</span>
+                  {% else %}
+                    <span class="badge badge-rule">📏 RULE</span>
+                  {% endif %}
+                </td>
+                <td class="mono" style="color:var(--muted)">{{ (trx.processed_at or '')[:16].replace('T',' ') }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="10" class="empty-state">Belum ada transaksi. Kirim POST /transaction untuk memulai.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">🎯 Fraud Rate</span></div>
+        <div class="card-body ring-wrap">
+          {% set rate = stats.fraud_rate or 0 %}
+          {% set circ = 2 * 3.14159 * 45 %}
+          {% set dash = (rate / 100) * circ %}
+          <svg class="ring-svg" width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="45" fill="none" stroke="#1f2937" stroke-width="10"/>
+            <circle cx="60" cy="60" r="45" fill="none"
+              stroke="{{ '#ef4444' if rate > 20 else '#f59e0b' if rate > 10 else '#22c55e' }}"
+              stroke-width="10" stroke-linecap="round"
+              stroke-dasharray="{{ dash }} {{ circ - dash }}"
+              stroke-dashoffset="{{ circ / 4 }}"
+              transform="rotate(-90 60 60)"/>
+            <text x="60" y="55" text-anchor="middle" fill="white" font-size="18" font-weight="700">{{ rate }}%</text>
+            <text x="60" y="72" text-anchor="middle" fill="#6b7280" font-size="10">Fraud Rate</text>
+          </svg>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;font-size:0.8rem">
+            <div><div class="c-green" style="font-weight:700;font-size:1.1rem">{{ stats.valid or 0 }}</div><div class="ring-label">Aman</div></div>
+            <div><div class="c-red" style="font-weight:700;font-size:1.1rem">{{ stats.fraud or 0 }}</div><div class="ring-label">Fraud</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔔 Fraud Alerts</span>
+          <span style="font-size:0.75rem;color:var(--muted)">via SNS</span>
+        </div>
+        <div class="card-body webhook-list">
+          {% for log in webhook_log %}
+          <div class="webhook-item">
+            <div class="webhook-id">{{ log.transaction_id }}</div>
+            <div style="color:var(--muted);font-size:0.75rem">{{ log.merchant_name }}</div>
+            <div class="webhook-amt">{{ format_rupiah(log.total_billing or log.amount or 0) }}</div>
+            <div class="webhook-time">{{ (log.received_at or '')[:16].replace('T',' ') }}</div>
+          </div>
+          {% else %}
+          <div class="empty-state">Belum ada fraud alert.<br>Kirim transaksi dengan amount &gt; 10.000.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  let refreshInterval = setInterval(refreshData, 30000);
+
+  function refreshData() {
+    fetch('/api/transactions?limit=100')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('last-update').textContent = new Date().toLocaleTimeString('id-ID');
+        console.log(`Refreshed: ${data.count} transaksi`);
+      })
+      .catch(e => console.warn('Refresh gagal:', e));
+  }
+
+  function filterTable(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('#trx-body tr[data-fraud]').forEach(row => {
+      const isFraud  = row.dataset.fraud === 'true';
+      const srcLower = row.dataset.source || '';
+      let show = true;
+      if (type === 'fraud') show = isFraud;
+      if (type === 'aman')  show = !isFraud;
+      if (type === 'ai')    show = srcLower === 'ai';
+      row.style.display = show ? '' : 'none';
+    });
+  }
+</script>
+</body>
+</html>
