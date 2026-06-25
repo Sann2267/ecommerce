@@ -2,12 +2,14 @@
 Flask Dashboard
 
 Routes:
-  GET  /              → Dashboard (tabel transaksi, stats, webhook log)
-  GET  /report        → Athena analytics report
-  POST /webhook       → Terima notifikasi SNS (HTTP subscription)
-  GET  /api/transactions → JSON API untuk frontend
-  GET  /api/stats     → JSON API untuk statistik
-  GET  /health        → Health check
+  GET  /                  → Dashboard (tabel transaksi, stats, webhook log)
+  GET  /report            → Athena analytics report
+  POST /webhook           → Terima notifikasi SNS (HTTP subscription)
+  POST /transactions      → Terima transaksi baru via API (X-API-Key)
+  GET  /api/transactions  → JSON API untuk frontend
+  GET  /api/stats         → JSON API untuk statistik
+  GET  /api/webhook-log   → JSON API untuk log webhook
+  GET  /health            → Health check
 """
 
 import json
@@ -34,7 +36,7 @@ DYNAMO_TABLE_NAME = os.environ.get('DYNAMO_TABLE_NAME',   'Sistemtoko-Transactio
 ATHENA_DB         = os.environ.get('ATHENA_DATABASE',     'analytics_db')
 ATHENA_S3_OUTPUT  = os.environ.get('ATHENA_S3_OUTPUT',    's3://sistematoko-datalake/athena-results/')
 SNS_TOPIC_ARN     = os.environ.get('SNS_TOPIC_ARN',       'arn:aws:sns:ap-southeast-2:017851679435:FraudAlert')
-API_KEY           = os.environ.get('API_KEY', 'default-secret-api-key')
+API_KEY           = os.environ.get('API_KEY',             'default-secret-api-key')
 
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 athena   = boto3.client('athena',    region_name=AWS_REGION)
@@ -48,13 +50,11 @@ def decimal_to_json(obj):
         return float(obj)
     raise TypeError
 
-
 def format_rupiah(amount) -> str:
     try:
         return f"Rp {float(amount):,.0f}".replace(',', '.')
     except Exception:
         return str(amount)
-
 
 def run_athena_query(query: str) -> list[dict]:
     resp = athena.start_query_execution(
@@ -66,10 +66,7 @@ def run_athena_query(query: str) -> list[dict]:
 
     for _ in range(30):
         time.sleep(1)
-        status = athena.get_query_execution(
-            QueryExecutionId=exec_id
-        )['QueryExecution']['Status']['State']
-
+        status = athena.get_query_execution(QueryExecutionId=exec_id)['QueryExecution']['Status']['State']
         if status == 'SUCCEEDED':
             break
         if status in ('FAILED', 'CANCELLED'):
@@ -85,13 +82,11 @@ def run_athena_query(query: str) -> list[dict]:
         for row in rows[1:]
     ]
 
-
 def get_dynamo_transactions(limit: int = 50) -> list[dict]:
     resp  = table.scan(Limit=limit)
     items = resp.get('Items', [])
     items.sort(key=lambda x: x.get('processed_at', ''), reverse=True)
     return items
-
 
 def get_stats(items: list[dict]) -> dict:
     total     = len(items)
@@ -103,24 +98,22 @@ def get_stats(items: list[dict]) -> dict:
     rule_count= sum(1 for i in items if i.get('decision_source') == 'RULE_FALLBACK')
 
     return {
-        'total':            total,
-        'fraud':            fraud,
-        'valid':            valid,
-        'fraud_rate':       round(fraud / total * 100, 1) if total else 0,
-        'total_revenue':    round(total_rev, 2),
+        'total':             total,
+        'fraud':             fraud,
+        'valid':             valid,
+        'fraud_rate':        round(fraud / total * 100, 1) if total else 0,
+        'total_revenue':     round(total_rev, 2),
         'total_fraud_amount': round(fraud_amt, 2),
-        'ai_decisions':     ai_count,
-        'rule_decisions':   rule_count,
+        'ai_decisions':      ai_count,
+        'rule_decisions':    rule_count,
     }
 
-@app.route('/health')
+@app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now(timezone.utc).isoformat()})
 
-
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
-    """Dashboard utama: tabel transaksi + statistik + webhook log."""
     try:
         items = get_dynamo_transactions(limit=100)
         stats = get_stats(items)
@@ -134,12 +127,10 @@ def index():
                            webhook_log=webhook_log[-20:],
                            format_rupiah=format_rupiah)
 
-
-@app.route('/report')
+@app.route('/report', methods=['GET'])
 def report():
     daily_data, top_merchants, fraud_by_category = [], [], []
     error = None
-
     try:
         daily_data = run_athena_query("""
             SELECT
@@ -152,7 +143,6 @@ def report():
             ORDER BY tanggal DESC
             LIMIT 30
         """)
-
         top_merchants = run_athena_query("""
             SELECT
                 merchant_name,
@@ -164,20 +154,16 @@ def report():
             ORDER BY total_revenue DESC
             LIMIT 10
         """)
-
         fraud_by_category = run_athena_query("""
             SELECT
                 category,
                 COUNT(CASE WHEN is_fraud = 'true' THEN 1 END)  AS fraud_count,
                 COUNT(*)                                         AS total_count,
-                ROUND(
-                    COUNT(CASE WHEN is_fraud = 'true' THEN 1 END) * 100.0 / COUNT(*),
-                1)                                               AS fraud_rate
+                ROUND(COUNT(CASE WHEN is_fraud = 'true' THEN 1 END) * 100.0 / COUNT(*), 1) AS fraud_rate
             FROM sistematoko_db.transactions
             GROUP BY category
             ORDER BY fraud_count DESC
         """)
-
     except Exception as e:
         logger.error(f"Athena error: {e}")
         error = str(e)
@@ -193,7 +179,6 @@ def report():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     global webhook_log
-
     sns_type = request.headers.get('x-amz-sns-message-type', '')
     content_type = request.headers.get('Content-Type', '')
 
@@ -204,8 +189,6 @@ def webhook():
             payload = json.loads(request.data.decode('utf-8'))
     except Exception:
         payload = {}
-
-    logger.info(f"Webhook received: type={sns_type}")
 
     if sns_type == 'SubscriptionConfirmation':
         confirm_url = payload.get('SubscribeURL')
@@ -226,28 +209,27 @@ def webhook():
             message = {'raw': message_str}
 
         log_entry = {
-            'received_at':    datetime.now(timezone.utc).isoformat(),
-            'subject':        payload.get('Subject', ''),
+            'received_at':     datetime.now(timezone.utc).isoformat(),
+            'subject':         payload.get('Subject', ''),
             'transaction_id': message.get('transaction_id', 'unknown'),
-            'amount':         message.get('amount', 0),
+            'amount':          message.get('amount', 0),
             'total_billing':  message.get('total_billing', 0),
             'fraud_verdict':  message.get('fraud_verdict', ''),
             'decision_source':message.get('decision_source', ''),
             'user_id':        message.get('user_id', ''),
             'merchant_name':  message.get('merchant_name', ''),
         }
-
         webhook_log.insert(0, log_entry)
         if len(webhook_log) > MAX_WEBHOOK_LOG:
             webhook_log = webhook_log[:MAX_WEBHOOK_LOG]
-
-        logger.info(f"Fraud alert logged: {log_entry['transaction_id']}")
         return jsonify({'received': True}), 200
 
     return jsonify({'received': True, 'type': sns_type}), 200
 
+
 @app.route('/transactions', methods=['POST'])
 def create_transaction():
+    """Endpoint for external services to push transactions directly."""
     request_key = request.headers.get('X-API-Key')
     if not request_key or request_key != API_KEY:
         logger.warning("Unauthorized access attempt to POST /transactions")
@@ -273,6 +255,7 @@ def create_transaction():
             db_item['processed_at'] = datetime.now(timezone.utc).isoformat()
         if 'is_fraud' not in db_item:
             db_item['is_fraud'] = False
+
         table.put_item(Item=db_item)
         logger.info(f"Successfully inserted transaction: {db_item['transaction_id']}")
         
@@ -281,27 +264,9 @@ def create_transaction():
             'message': 'Transaction recorded successfully',
             'transaction_id': db_item['transaction_id']
         }), 201
-
     except Exception as e:
         logger.error(f"Failed to insert transaction into DynamoDB: {e}")
-        return jsonify({'status': 'error', 'message': 'Internal database error'}), 500
-
-@app.route('/api/transactions', methods=['GET'])
-def api_transactions():
-    """JSON API: list transaksi untuk AJAX request."""
-    limit = min(int(request.args.get('limit', 50)), 200)
-    only_fraud = request.args.get('fraud_only', '').lower() == 'true'
-
-    try:
-        items = get_dynamo_transactions(limit=limit)
-        if only_fraud:
-            items = [i for i in items if i.get('is_fraud')]
-        serialized = json.loads(json.dumps(items, default=decimal_to_json))
-        return jsonify({'status': 'ok', 'count': len(serialized), 'transactions': serialized})
-    except Exception as e:
-        logger.error(f"API transactions error: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
+        return jsonify({'status': 'error', 'message': f'Internal database error: {str(e)}'}), 500
 
 @app.route('/api/stats', methods=['GET'])
 def api_stats():
