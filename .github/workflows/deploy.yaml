@@ -22,7 +22,7 @@ jobs:
           pip install ruff
           ruff check .
       - name: Build Docker image
-        run: docker build -t ghcr.io/sann2267/sistemtoko-dashboard:latest dashboard/
+        run: docker build -t ghcr.io/sann2267/sistemtoko-dashboard:latest .
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Push image
