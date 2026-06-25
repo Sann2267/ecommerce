@@ -14,8 +14,6 @@ import json
 import os
 import time
 import logging
-import hmac
-import hashlib
 from datetime import datetime, timezone
 from decimal import Decimal
 
